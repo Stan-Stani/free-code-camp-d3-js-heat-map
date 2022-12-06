@@ -37,3 +37,12 @@ body {
     min-height: 0;
     height: 100%;
 }
+
+#tooltip rect {
+    fill: black;
+    color: white;
+}
+
+#tooltip text {
+    fill: white;
+}
