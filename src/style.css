@@ -46,3 +46,16 @@ body {
 #tooltip text {
     fill: white;
 }
+
+.svg-rect-button {
+    fill: green;
+}
+
+.svg-rect-button text {
+    fill: white;
+}
+
+.svg-rect-button:hover {
+    fill: black;
+}
+
