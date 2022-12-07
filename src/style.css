@@ -21,7 +21,7 @@ body {
     align-items: center;
     position: relative;
     text-align: center;
-    flex-basis: 800px;
+    flex-basis: 1366px;
     height: 100%;
     width: 100%;
     min-width: 0;
@@ -33,7 +33,7 @@ body {
     box-sizing: border-box;
     width: 100%;
     display: block;
-    max-height: 600px;
+    max-height: 768px;
     min-height: 0;
     height: 100%;
 }

@@ -1,7 +1,7 @@
 
 // Define global variables
-const WIDTH = 800;
-const HEIGHT = 600;
+const WIDTH = 1366;
+const HEIGHT = 768;
 const PADDING = 20;
 
 PLOT_WIDTH = WIDTH - PADDING;
@@ -98,9 +98,13 @@ fetch(
                 return colorScalesArr[state.colorScaleIndex](d.variance).formatHex();
                 // Not an arrow function because vanilla anon will
                 // get 'this' initialized to dom element event is happening on
-            }).on('mouseover', function(e, d) {
-                this.setAttribute('stroke-width', '5')
-                this.setAttribute('stroke', 'black')
+            })
+            .attr('class', 'datum-rect')
+            .on('mouseover', function(e, d) {
+                datumOutline.attr('x', this.getAttribute('x'))
+                datumOutline.attr('y', this.getAttribute('y'))
+                datumOutline.attr('style', 'visibility: visible;')
+                datumOutline.attr('stroke', (invertColorHexCode(this.getAttribute('fill'))));
 
                 tooltip.select('text')
                 .text(JSON.stringify(d))
@@ -133,7 +137,8 @@ fetch(
                 })
         });
 
-
+        
+        let datumOutline = buildDatumOutline()
 
         buildAxes();
     })
@@ -141,74 +146,108 @@ fetch(
 
 
 
-    function buildTooltipScaffold() {
-        let tooltip = svgWrapper
-            .append('g')
-            .attr('id', 'tooltip')
+function buildTooltipScaffold() {
+    let tooltip = svgWrapper
+        .append('g')
+        .attr('id', 'tooltip')
+    
+    let tooltipRect = tooltip
+        .append('rect')
+        .attr('id', 'tooltip-rect')
+        .attr('rx', '.75%')
+        .attr('ry', '.75%')
+        .attr('width', '400')
+        .attr('height', '100')
+    
+    tooltip
+        .append('text')
+        .text('hello')
+        .attr('x', '0')
+        .attr('y', '32')
         
-        let tooltipRect = tooltip
-            .append('rect')
-            .attr('id', 'tooltip-rect')
+
+    return tooltip;
+}
+
+function buildButtons() {
+    let nextColorScaleButton = 
+    svgWrapper
+        .append('g')
+            .attr('id', 'next-color-scale-button')
+            .attr('class', 'svg-rect-button')
+        
+    nextColorScaleButton
+        .attr('style', `transform: translate(${WIDTH - PADDING - 30}px, 30px`)
+    
+    nextColorScaleButton
+        .append('rect')
             .attr('rx', '.75%')
             .attr('ry', '.75%')
-            .attr('width', '400')
-            .attr('height', '100')
-        
-        tooltip
-            .append('text')
+            .attr('width', '60')
+            .attr('height', '30')
+
+    nextColorScaleButton
+        .append('text')
             .text('hello')
             .attr('x', '0')
-            .attr('y', '32')
-            
-
-        return tooltip;
-    }
-
-    function buildButtons() {
-        let nextColorScaleButton = 
-        svgWrapper
-            .append('g')
-                .attr('id', 'next-color-scale-button')
-                .attr('class', 'svg-rect-button')
-            
-        nextColorScaleButton
-            .attr('style', `transform: translate(${WIDTH - PADDING - 30}px, 30px`)
-        
-        nextColorScaleButton
-            .append('rect')
-                .attr('rx', '.75%')
-                .attr('ry', '.75%')
-                .attr('width', '60')
-                .attr('height', '30')
-
-        nextColorScaleButton
-            .append('text')
-                .text('hello')
-                .attr('x', '0')
-                .attr('y', '15')
-        
-        return [nextColorScaleButton];
-    }
-
-    function buildAxes() {
-
-        let xAxis = d3.axisBottom(xScale)
-            .tickFormat(d3.timeFormat("%Y"))
-            .ticks(d3.timeYear.every(15))
-        svgWrapper.append('g')
-            .attr('id', 'x-axis')
-            .attr('style', `transform: translate(0px, ${HEIGHT - PADDING / 2}px;`)
-            .call(xAxis)
+            .attr('y', '15')
     
-        let yAxis = d3.axisLeft(yScale)
-            .tickSizeInner(3);
-        svgWrapper.append('g')
-            .attr('id', 'y-axis')
-            .attr('style', `transform: translate(${PADDING * .80}px, 0px);`)
-            .call(yAxis)
+    return [nextColorScaleButton];
+}
+
+function buildAxes() {
+
+    let xAxis = d3.axisBottom(xScale)
+        .tickFormat(d3.timeFormat("%Y"))
+        .ticks(d3.timeYear.every(15))
+    svgWrapper.append('g')
+        .attr('id', 'x-axis')
+        .attr('style', `transform: translate(0px, ${HEIGHT - PADDING / 2}px;`)
+        .call(xAxis)
+
+    let yAxis = d3.axisLeft(yScale)
+        .tickSizeInner(3);
+    svgWrapper.append('g')
+        .attr('id', 'y-axis')
+        .attr('style', `transform: translate(${PADDING * .80}px, 0px);`)
+        .call(yAxis)
+    
         
-            
-    }
+}
+
+function buildDatumOutline() {
+    let datumRect = svgWrapper.select('.datum-rect');
+    let outlineRect = svgWrapper.append('rect');
+
+    outlineRect
+        .attr('width', datumRect.attr('width') - 1)
+        .attr('height', datumRect.attr('height') - 1)
+        .attr('stroke', 'black')
+        .attr('stroke-width', '1')
+        .attr('fill', 'none')
+        .attr('style', 'visibility: hidden;')
+
+    
+    return outlineRect;
+}
+
+function invertColorHexCode(str) {
+    str = str.slice(1);
+    let origColorInt = Number('0x' + str)
+    let largestColorInt = 0xFFFFFF;
+
+    let invertedColorInt = largestColorInt - origColorInt;
+    invertedColorCode = invertedColorInt.toString(16);
+
+    invertedColorCode = '#' + invertedColorCode;
+
+    return invertedColorCode;
+    
+    
+
+}
+
+
 
 
 // utility functions
