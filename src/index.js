@@ -1,8 +1,11 @@
+// TODO: Revert datum highlighting to black stroke
+// TODO: Correctly align highlighting rect to hovered datum
+// TODO: Clean up top axis first and last ticks, etc.
 
 // Define global variables
 const WIDTH = 1366;
 const HEIGHT = 768;
-const PADDING = 20;
+const PADDING = 25;
 
 PLOT_WIDTH = WIDTH - PADDING;
 PLOT_HEIGHT = HEIGHT - PADDING;
@@ -11,7 +14,12 @@ const xScale = d3.scaleTime();
 xScale.range([PADDING, WIDTH - PADDING])
 
 // input domain and range to yScale
-const yScale = d3.scaleLinear([1, 12], [PADDING, PLOT_HEIGHT]);
+// Domain is one extra element so there is exactly enough space for all elements
+const yScale = d3.scaleLinear([1, 13], [PADDING, PLOT_HEIGHT]);
+
+
+const DATUM_HEIGHT = yScale(2) - PADDING;
+let datumWidth;
 
 const svgWrapper = d3.select('#svg-wrapper');
 
@@ -36,7 +44,7 @@ fetch(
             yearsObj[element.year] = element.year;
         }
         const yearCount = Object.keys(yearsObj).length;
-        const heatMapElementWidth = WIDTH / yearCount;
+        datumWidth = WIDTH / yearCount;
         
         let xDomainStart = new Date(monthlyVariance[0].year, parseInt(monthlyVariance[0].month) - 1);
         let xDomainEnd = new Date(
@@ -90,8 +98,8 @@ fetch(
             .data(data.monthlyVariance)
             .enter()
             .append('rect')
-            .attr('width', heatMapElementWidth)
-            .attr('height', '40')
+            .attr('width', datumWidth)
+            .attr('height', DATUM_HEIGHT)
             .attr('x', d => xScale(new Date(d.year, 0)))
             .attr('y', (d) => yScale(d.month))
             .attr('fill', d => {
@@ -197,20 +205,44 @@ function buildButtons() {
 
 function buildAxes() {
 
-    let xAxis = d3.axisBottom(xScale)
+    let xAxis = d3.axisTop(xScale)
         .tickFormat(d3.timeFormat("%Y"))
         .ticks(d3.timeYear.every(15))
     svgWrapper.append('g')
         .attr('id', 'x-axis')
-        .attr('style', `transform: translate(0px, ${HEIGHT - PADDING / 2}px;`)
+        // Set x such that ticks are aligned with middle of each datum
+        .attr('style', `transform: translate(${datumWidth / 2}px, ${PADDING - 3}px);`)
         .call(xAxis)
 
-    let yAxis = d3.axisLeft(yScale)
-        .tickSizeInner(3);
-    svgWrapper.append('g')
+    // Build 12 element scale for 12 ticks
+    // And make total height of axis 1/12 less than total height of datum heights
+    // So space between axis ticks is same as height of datum
+    const yAxisScale = d3.scaleLinear([1, 12], [PADDING, PLOT_HEIGHT * 11/12]);
+    
+    let yAxis = d3.axisLeft(yAxisScale)
+        .tickSizeInner(3)
+        .tickFormat(d => {
+            let monthArr = [
+                'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+            ]
+            return monthArr[d - 1];
+        })
+        .tickSize(0)
+        .tickPadding(0)
+        
+    
+
+    let yAxisGroup = svgWrapper.append('g')
         .attr('id', 'y-axis')
-        .attr('style', `transform: translate(${PADDING * .80}px, 0px);`)
+        // Set y such that ticks are aligned with middle of each datum
+        .attr('style', `transform: translate(${PADDING * .8}px, ${DATUM_HEIGHT / 2}px);`)
         .call(yAxis)
+    
+    // remove axis line itself, leaving only
+    yAxisGroup.select('path').remove();
+
+
     
         
 }
