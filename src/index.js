@@ -11,8 +11,7 @@ const PADDING = 25;
 PLOT_WIDTH = WIDTH - PADDING;
 PLOT_HEIGHT = HEIGHT - PADDING;
 
-const xScale = d3.scaleTime();
-xScale.range([PADDING, WIDTH - PADDING])
+
 
 // input domain and range to yScale
 // Domain is one extra element so there is exactly enough space for all elements
@@ -39,84 +38,9 @@ fetch(
     .then(res => res.json())
     .then(data => {
         
-        let monthlyVariance = data.monthlyVariance
-
-        let yearsObj = {};
-        for (const element of monthlyVariance) {
-
-            yearsObj[element.year] = element.year;
-        }
-        const yearCount = Object.keys(yearsObj).length;
-        datumWidth = WIDTH / yearCount;
-        
-        let xDomainStart = new Date(monthlyVariance[0].year, parseInt(monthlyVariance[0].month) - 1);
-        let xDomainEnd = new Date(
-            monthlyVariance[monthlyVariance.length - 1].year,
-            parseInt(monthlyVariance[monthlyVariance.length - 1].month) - 1
-        );
-
-        xScale.domain([xDomainStart, xDomainEnd]);
-
-
-        let coldestVariance = d3.min(monthlyVariance, element => element.variance);
-        let hottestVariance = d3.max(monthlyVariance, element => element.variance);
-        c({coldestVariance, hottestVariance})
-        // { coldestVariance: -6.976, hottestVariance: 5.228 }
-        let justVarianceArr = monthlyVariance.map(element => {
-            return element.variance;
-        })
-
-        palettesArr = [
-            {
-                name: "Stan's Palette",
-                colors: [
-                    d3.color('#004352'),
-                    d3.color('#005f73'),
-                    d3.color('#0a9396'), 
-                    d3.color('#94d2bd'), 
-                    d3.color('#e9d8a6'),
-                    d3.color('#ee9b00'),
-                    d3.color('#ca6702'),
-                    d3.color('#bb3e03'),
-                    d3.color('#ae2012'),
-                    d3.color('#9b2226'),
-                    d3.color('#7a292c')
-                ]
-            },
-            {   name: "freeCodeCamp's Palette",
-                colors: [
-                    '#a50026',
-                    '#d73027',
-                    '#f46d43',
-                    '#fdae61',
-                    '#fee090',
-                    '#ffffbf',
-                    '#e0f3f8',
-                    '#abd9e9',
-                    '#74add1',
-                    '#4575b4',
-                    '#313695'
-                ].map(element => d3.color(element)).reverse()
-            }
-        ]
-
+       let [xScale, yScale, colorScalesArr, palettesArr] = [...buildScales(data)];
        
-
-
-        const colorScalesObj = {};
-        colorScalesObj.quantile = d3.scaleQuantile();
-        colorScalesObj.quantile.domain(justVarianceArr);
-        colorScalesObj.quantile.range(palettesArr[state.paletteIndex].colors);
-
-        colorScalesObj.quantize = d3.scaleQuantize();
-        colorScalesObj.quantize.domain([coldestVariance, hottestVariance]);
-        colorScalesObj.quantize.range(palettesArr[state.paletteIndex].colors);
-
-        colorScalesArr = [
-            colorScalesObj.quantile, 
-            colorScalesObj.quantize
-        ];
-        
+       console.log(xScale.domain())
         
 
         svgWrapper
@@ -155,14 +79,43 @@ fetch(
 
         tooltip = buildTooltipScaffold();
 
-       let [cycleScaleTypeButton, cyclePaletteButton] = [...buildButtons()];
+       
 
-        cycleScaleTypeButton.on('mouseup', (e) => {
+       handleButtonClicks(...buildButtons());
 
-            state.colorScaleIndex++;
-            (state.colorScaleIndex > colorScalesArr.length - 1) ? state.colorScaleIndex = 0 : null;
+        
+        let datumOutline = buildDatumOutline()
 
-            svgWrapper
+        buildAxes(xScale, yScale);
+
+
+
+
+        function handleButtonClicks(cycleScaleTypeButton, cyclePaletteButton) {
+            cycleScaleTypeButton.on('mouseup', (e) => {
+        
+                state.colorScaleIndex++;
+                (state.colorScaleIndex > colorScalesArr.length - 1) ? state.colorScaleIndex = 0 : null;
+        
+                svgWrapper
+                    .selectAll('rect')
+                    .data(data.monthlyVariance)
+                    .attr('x', d => xScale(new Date(d.year, 0)))
+                    .attr('y', (d) => yScale(d.month))
+                    .attr('fill', d => {
+                        return colorScalesArr[state.colorScaleIndex](d.variance).formatHex();
+                    })
+            });
+        
+            cyclePaletteButton.on('mouseup', e => {
+                state.paletteIndex++;
+                (state.paletteIndex > palettesArr.length - 1) ? state.paletteIndex = 0 : null;
+        
+                colorScalesArr.forEach(scale => {
+                    scale.range(palettesArr[state.paletteIndex].colors);
+                })
+        
+                svgWrapper
                 .selectAll('rect')
                 .data(data.monthlyVariance)
                 .attr('x', d => xScale(new Date(d.year, 0)))
@@ -170,33 +123,93 @@ fetch(
                 .attr('fill', d => {
                     return colorScalesArr[state.colorScaleIndex](d.variance).formatHex();
                 })
-        });
-
-        cyclePaletteButton.on('mouseup', e => {
-            state.paletteIndex++;
-            (state.paletteIndex > palettesArr.length - 1) ? state.paletteIndex = 0 : null;
-
-            colorScalesArr.forEach(scale => {
-                scale.range(palettesArr[state.paletteIndex].colors);
             })
-
-            svgWrapper
-            .selectAll('rect')
-            .data(data.monthlyVariance)
-            .attr('x', d => xScale(new Date(d.year, 0)))
-            .attr('y', (d) => yScale(d.month))
-            .attr('fill', d => {
-                return colorScalesArr[state.colorScaleIndex](d.variance).formatHex();
-            })
-        })
-
-        
-        let datumOutline = buildDatumOutline()
-
-        buildAxes();
+        }
     })
 
+function buildScales(data) {
+    const xScale = d3.scaleTime();
+    xScale.range([PADDING, WIDTH - PADDING])
 
+
+
+
+    let monthlyVariance = data.monthlyVariance
+
+    let yearsObj = {};
+    for (const element of monthlyVariance) {
+
+        yearsObj[element.year] = element.year;
+    }
+    const yearCount = Object.keys(yearsObj).length;
+    datumWidth = WIDTH / yearCount;
+    
+    let xDomainStart = new Date(monthlyVariance[0].year, parseInt(monthlyVariance[0].month) - 1);
+    let xDomainEnd = new Date(
+        monthlyVariance[monthlyVariance.length - 1].year,
+        parseInt(monthlyVariance[monthlyVariance.length - 1].month) - 1
+    );
+
+    xScale.domain([xDomainStart, xDomainEnd]);
+
+
+    let coldestVariance = d3.min(monthlyVariance, element => element.variance);
+    let hottestVariance = d3.max(monthlyVariance, element => element.variance);
+
+    let justVarianceArr = monthlyVariance.map(element => {
+        return element.variance;
+    })
+
+    let palettesArr = [
+        {
+            name: "Stan's Palette",
+            colors: [
+                d3.color('#004352'),
+                d3.color('#005f73'),
+                d3.color('#0a9396'), 
+                d3.color('#94d2bd'), 
+                d3.color('#e9d8a6'),
+                d3.color('#ee9b00'),
+                d3.color('#ca6702'),
+                d3.color('#bb3e03'),
+                d3.color('#ae2012'),
+                d3.color('#9b2226'),
+                d3.color('#7a292c')
+            ]
+        },
+        {   name: "freeCodeCamp's Palette",
+            colors: [
+                '#a50026',
+                '#d73027',
+                '#f46d43',
+                '#fdae61',
+                '#fee090',
+                '#ffffbf',
+                '#e0f3f8',
+                '#abd9e9',
+                '#74add1',
+                '#4575b4',
+                '#313695'
+            ].map(element => d3.color(element)).reverse()
+        }
+    ]
+
+    
+    let colorScalesArr = [
+        d3.scaleQuantize()
+            .domain([coldestVariance, hottestVariance])
+            .range(palettesArr[state.paletteIndex].colors), 
+        d3.scaleQuantile()
+            .domain(justVarianceArr)
+            .range(palettesArr[state.paletteIndex].colors),
+    ];
+    
+
+
+    return [xScale, yScale, colorScalesArr, palettesArr];
+    
+    
+}
 
 
 function buildTooltipScaffold() {
@@ -270,7 +283,9 @@ function buildButtons() {
     return [cycleScaleTypeButton, cyclePaletteButton];
 }
 
-function buildAxes() {
+
+
+function buildAxes(xScale, yScale) {
 
     let xAxis = d3.axisTop(xScale)
         .tickFormat(d3.timeFormat("%Y"))
