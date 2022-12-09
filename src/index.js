@@ -1,16 +1,23 @@
 // TODO: Revert datum highlighting to black stroke
 // TODO: Correctly align highlighting rect to hovered datum
 // TODO: Clean up top axis first and last ticks, etc.
-// Hide outline when mouse out
+// TODO: Hide outline when mouse out
+// TODO: Don't round tickValues so much!!!
+// Change legend color lengths when scale type changes?
 
 // Define global variables
 const WIDTH = 1366;
 const HEIGHT = 768;
 const PADDING = 25;
+const BOTTOM_PADDING = 50;
 
-PLOT_WIDTH = WIDTH - PADDING;
-PLOT_HEIGHT = HEIGHT - PADDING;
+const PLOT_WIDTH = WIDTH - PADDING;
+const PLOT_HEIGHT = HEIGHT - BOTTOM_PADDING;
 
+const LEGEND_X = PADDING;
+const LEGEND_Y = PLOT_HEIGHT + PADDING / 2;
+const LEGEND_LENGTH = 250;
+const LEGEND_RECT_HEIGHT = 10;
 
 
 // input domain and range to yScale
@@ -38,12 +45,18 @@ fetch(
     .then(res => res.json())
     .then(data => {
         
-       let [xScale, yScale, colorScalesArr, palettesArr] = [...buildScales(data)];
-       
-       console.log(xScale.domain())
-        
+       let [
+            xScale, 
+            yScale, 
+            legendScaleObj, 
+            colorScalesArr, 
+            palettesArr
+        ] = [...buildScales(data)];
 
-        svgWrapper
+        let dataGroup = svgWrapper.append('g')
+            .attr('class', 'data-group')
+
+        dataGroup
             .selectAll('rect')
             .data(data.monthlyVariance)
             .enter()
@@ -86,7 +99,7 @@ fetch(
         
         let datumOutline = buildDatumOutline()
 
-        buildAxes(xScale, yScale);
+        buildAxes(xScale, yScale, legendScaleObj);
 
 
 
@@ -97,7 +110,7 @@ fetch(
                 state.colorScaleIndex++;
                 (state.colorScaleIndex > colorScalesArr.length - 1) ? state.colorScaleIndex = 0 : null;
         
-                svgWrapper
+                dataGroup
                     .selectAll('rect')
                     .data(data.monthlyVariance)
                     .attr('x', d => xScale(new Date(d.year, 0)))
@@ -115,7 +128,7 @@ fetch(
                     scale.range(palettesArr[state.paletteIndex].colors);
                 })
         
-                svgWrapper
+                dataGroup
                 .selectAll('rect')
                 .data(data.monthlyVariance)
                 .attr('x', d => xScale(new Date(d.year, 0)))
@@ -123,6 +136,15 @@ fetch(
                 .attr('fill', d => {
                     return colorScalesArr[state.colorScaleIndex](d.variance).formatHex();
                 })
+
+                let legend = svgWrapper.select('#legend')
+                    .selectAll('rect')
+                    .data(legendScaleObj.colorLengths)
+                        .attr('fill', d => {
+                            return colorScalesArr[state.colorScaleIndex](d).formatHex()
+                        })
+
+
             })
         }
     })
@@ -203,14 +225,95 @@ function buildScales(data) {
             .domain(justVarianceArr)
             .range(palettesArr[state.paletteIndex].colors),
     ];
-    
 
 
-    return [xScale, yScale, colorScalesArr, palettesArr];
+
+
+    let colorLengths = colorScalesArr[state.colorScaleIndex].range().map(color => {
+        return colorScalesArr[0].invertExtent(color)[0];
+    });
+
+
+    let legendScale = d3.scaleLinear()
+        .domain(colorScalesArr[state.colorScaleIndex].domain())
+        .range([0, LEGEND_LENGTH])
+
+    let legend = svgWrapper.append('g')
+        .attr('id', 'legend')
+
+    legend
+        .selectAll('rect')
+        .data(colorLengths)
+        .enter()
+        .append('rect')
+            .attr('x', d => legendScale(d))
+            .attr('style', `transform: translate(${LEGEND_X}px, ${LEGEND_Y}px);`)
+            .attr('width', Math.abs(0 - LEGEND_LENGTH)/colorLengths.length)
+            .attr('height', LEGEND_RECT_HEIGHT)
+            .attr('fill', d => {
+                return colorScalesArr[state.colorScaleIndex](d).formatHex()
+            })
+
+
+        
+    let legendScaleObj = {legendScale, colorLengths};
+
+    return [xScale, yScale, legendScaleObj, colorScalesArr, palettesArr];
     
     
 }
 
+function buildAxes(xScale, yScale, legendScaleObj) {
+
+    let xAxis = d3.axisTop(xScale)
+        .tickFormat(d3.timeFormat("%Y"))
+        .ticks(d3.timeYear.every(15))
+    svgWrapper.append('g')
+        .attr('id', 'x-axis')
+        // Set x such that ticks are aligned with middle of each datum
+        .attr('style', `transform: translate(${datumWidth / 2}px, ${PADDING - 3}px);`)
+        .call(xAxis)
+
+    // Build 12 element scale for 12 ticks
+    // And make total height of axis 1/12 less than total height of datum heights
+    // So space between axis ticks is same as height of datum
+    const yAxisScale = d3.scaleLinear([1, 12], [PADDING, PLOT_HEIGHT * 11/12]);
+    
+    let yAxis = d3.axisLeft(yAxisScale)
+        .tickSizeInner(3)
+        .tickFormat(d => {
+            let monthArr = [
+                'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+            ]
+            return monthArr[d - 1];
+        })
+        .tickSize(0)
+        .tickPadding(0)
+        
+    
+
+    let yAxisGroup = svgWrapper.append('g')
+        .attr('id', 'y-axis')
+        // Set y such that ticks are aligned with middle of each datum
+        .attr('style', `transform: translate(${PADDING * .8}px, ${DATUM_HEIGHT / 2}px);`)
+        .call(yAxis)
+    
+    // remove axis line itself, leaving only labels
+    yAxisGroup.select('path').remove();
+
+    let legendAxis = d3.axisBottom(legendScaleObj.legendScale)
+        .tickValues(legendScaleObj.colorLengths)
+    
+    p(legendScaleObj)
+        
+        svgWrapper.append('g')
+            .attr('id', 'legend-axis')
+            .attr('style', `transform: translate(${LEGEND_X}px,
+                 ${LEGEND_Y + LEGEND_RECT_HEIGHT}px);`)
+            .call(legendAxis)
+        
+}
 
 function buildTooltipScaffold() {
     let tooltip = svgWrapper
@@ -285,49 +388,7 @@ function buildButtons() {
 
 
 
-function buildAxes(xScale, yScale) {
 
-    let xAxis = d3.axisTop(xScale)
-        .tickFormat(d3.timeFormat("%Y"))
-        .ticks(d3.timeYear.every(15))
-    svgWrapper.append('g')
-        .attr('id', 'x-axis')
-        // Set x such that ticks are aligned with middle of each datum
-        .attr('style', `transform: translate(${datumWidth / 2}px, ${PADDING - 3}px);`)
-        .call(xAxis)
-
-    // Build 12 element scale for 12 ticks
-    // And make total height of axis 1/12 less than total height of datum heights
-    // So space between axis ticks is same as height of datum
-    const yAxisScale = d3.scaleLinear([1, 12], [PADDING, PLOT_HEIGHT * 11/12]);
-    
-    let yAxis = d3.axisLeft(yAxisScale)
-        .tickSizeInner(3)
-        .tickFormat(d => {
-            let monthArr = [
-                'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-            ]
-            return monthArr[d - 1];
-        })
-        .tickSize(0)
-        .tickPadding(0)
-        
-    
-
-    let yAxisGroup = svgWrapper.append('g')
-        .attr('id', 'y-axis')
-        // Set y such that ticks are aligned with middle of each datum
-        .attr('style', `transform: translate(${PADDING * .8}px, ${DATUM_HEIGHT / 2}px);`)
-        .call(yAxis)
-    
-    // remove axis line itself, leaving only
-    yAxisGroup.select('path').remove();
-
-
-    
-        
-}
 
 function buildDatumOutline() {
     let datumRect = svgWrapper.select('.datum-rect');
@@ -351,6 +412,6 @@ function buildDatumOutline() {
 
 
 // utility functions
-function c(...input) {
+function p(...input) {
     console.log(...input);
 }

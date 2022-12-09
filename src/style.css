@@ -35,8 +35,8 @@ body {
     display: block;
     max-height: 768px;
     min-height: 0;
-    height: 100%;
 }
+
 
 #tooltip rect {
     fill: black;
@@ -49,6 +49,7 @@ body {
 
 .svg-rect-button {
     fill: green;
+    user-select: none;
 }
 
 .svg-rect-button text {
