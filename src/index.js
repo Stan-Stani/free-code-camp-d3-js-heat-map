@@ -277,11 +277,7 @@ function buildScales(data) {
             .attr('width', Math.abs(0 - LEGEND_LENGTH)/colorLengths.length)
             .attr('height', LEGEND_RECT_HEIGHT)
             .attr('fill', (d) => {
-                if (!d.length) {
-                    return colorScalesArr[state.colorScaleIndex](d).formatHex()
-                } else {
-                    return colorScalesArr[state.colorScaleIndex](d[0]).formatHex()
-                }
+                return generateLegendFill(d, colorScalesArr, state.colorScaleIndex);
             })
 
 
@@ -291,6 +287,14 @@ function buildScales(data) {
     return [xScale, yScale, legendScaleObj, colorScalesArr, palettesArr];
     
     
+}
+
+generateLegendFill(d, colorScalesArr, colorScaleIndex) {
+    if (!d.length) {
+        return colorScalesArr[colorScaleIndex](d).formatHex()
+    } else {
+        return colorScalesArr[colorScaleIndex](d[0]).formatHex()
+    }
 }
 
 function buildAxes(xScale, yScale, legendScaleObj) {
