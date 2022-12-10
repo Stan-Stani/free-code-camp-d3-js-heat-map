@@ -45,6 +45,16 @@ fetch(
     .then(res => res.json())
     .then(data => {
         
+        let baseTemperature = parseFloat(data.baseTemperature);
+            data = data.monthlyVariance.map(e => {
+                return {
+                    year: e.year,
+                    month: e.month,
+                    temp: parseFloat(e.variance) + baseTemperature
+                }
+            });
+
+
        let [
             xScale, 
             yScale, 
@@ -58,7 +68,7 @@ fetch(
 
         dataGroup
             .selectAll('rect')
-            .data(data.monthlyVariance)
+            .data(data)
             .enter()
             .append('rect')
             .attr('width', datumWidth)
@@ -66,7 +76,7 @@ fetch(
             .attr('x', d => xScale(new Date(d.year, 0)))
             .attr('y', (d) => yScale(d.month))
             .attr('fill', d => {
-                return colorScalesArr[state.colorScaleIndex](d.variance).formatHex();
+                return colorScalesArr[state.colorScaleIndex](d.temp).formatHex();
                 // Not an arrow function because vanilla anon will
                 // get 'this' initialized to dom element event is happening on
             })
@@ -112,11 +122,11 @@ fetch(
         
                 dataGroup
                     .selectAll('rect')
-                    .data(data.monthlyVariance)
+                    .data(data)
                     .attr('x', d => xScale(new Date(d.year, 0)))
                     .attr('y', (d) => yScale(d.month))
                     .attr('fill', d => {
-                        return colorScalesArr[state.colorScaleIndex](d.variance).formatHex();
+                        return colorScalesArr[state.colorScaleIndex](d.temp).formatHex();
                     })
             });
         
@@ -130,11 +140,11 @@ fetch(
         
                 dataGroup
                 .selectAll('rect')
-                .data(data.monthlyVariance)
+                .data(data)
                 .attr('x', d => xScale(new Date(d.year, 0)))
                 .attr('y', (d) => yScale(d.month))
                 .attr('fill', d => {
-                    return colorScalesArr[state.colorScaleIndex](d.variance).formatHex();
+                    return colorScalesArr[state.colorScaleIndex](d.temp).formatHex();
                 })
 
                 let legend = svgWrapper.select('#legend')
@@ -156,8 +166,7 @@ function buildScales(data) {
 
 
 
-    let monthlyVariance = data.monthlyVariance
-
+    let monthlyVariance = data
     let yearsObj = {};
     for (const element of monthlyVariance) {
 
@@ -175,11 +184,11 @@ function buildScales(data) {
     xScale.domain([xDomainStart, xDomainEnd]);
 
 
-    let coldestVariance = d3.min(monthlyVariance, element => element.variance);
-    let hottestVariance = d3.max(monthlyVariance, element => element.variance);
+    let coldestVariance = d3.min(monthlyVariance, element => element.temp);
+    let hottestVariance = d3.max(monthlyVariance, element => element.temp);
 
     let justVarianceArr = monthlyVariance.map(element => {
-        return element.variance;
+        return element.temp;
     })
 
     let palettesArr = [
@@ -227,11 +236,22 @@ function buildScales(data) {
     ];
 
 
+    let colorScaleRange = colorScalesArr[state.colorScaleIndex].range();
+    let colorLengths = colorScaleRange.map((color, index) => {
+        if (index < colorScaleRange.length - 1) {
+            return colorScalesArr[state.colorScaleIndex].invertExtent(color)[0];
 
-
-    let colorLengths = colorScalesArr[state.colorScaleIndex].range().map(color => {
-        return colorScalesArr[0].invertExtent(color)[0];
+            // colorLengths will contain start of color, which is end of previous color
+            // but last element is nested arr of start and end of respective color
+            // as there is no next color that indicates end of that last element
+        } else if (index === colorScaleRange.length - 1) {
+            return [
+                colorScalesArr[state.colorScaleIndex].invertExtent(color)[0],
+                colorScalesArr[state.colorScaleIndex].invertExtent(color)[1]
+            ]
+        }
     });
+
 
 
     let legendScale = d3.scaleLinear()
@@ -240,18 +260,28 @@ function buildScales(data) {
 
     let legend = svgWrapper.append('g')
         .attr('id', 'legend')
-
+    p(colorLengths)
     legend
         .selectAll('rect')
         .data(colorLengths)
         .enter()
         .append('rect')
-            .attr('x', d => legendScale(d))
+            .attr('x', d => {
+                if (!d.length) {
+                    return legendScale(d);
+                } else {
+                    return legendScale(d[0]);
+                }
+            })
             .attr('style', `transform: translate(${LEGEND_X}px, ${LEGEND_Y}px);`)
             .attr('width', Math.abs(0 - LEGEND_LENGTH)/colorLengths.length)
             .attr('height', LEGEND_RECT_HEIGHT)
-            .attr('fill', d => {
-                return colorScalesArr[state.colorScaleIndex](d).formatHex()
+            .attr('fill', (d) => {
+                if (!d.length) {
+                    return colorScalesArr[state.colorScaleIndex](d).formatHex()
+                } else {
+                    return colorScalesArr[state.colorScaleIndex](d[0]).formatHex()
+                }
             })
 
 
@@ -265,6 +295,9 @@ function buildScales(data) {
 
 function buildAxes(xScale, yScale, legendScaleObj) {
 
+    let axesObj = {};
+
+
     let xAxis = d3.axisTop(xScale)
         .tickFormat(d3.timeFormat("%Y"))
         .ticks(d3.timeYear.every(15))
@@ -273,6 +306,9 @@ function buildAxes(xScale, yScale, legendScaleObj) {
         // Set x such that ticks are aligned with middle of each datum
         .attr('style', `transform: translate(${datumWidth / 2}px, ${PADDING - 3}px);`)
         .call(xAxis)
+
+        axesObj.xAxis = xAxis;
+        console.log(axesObj)
 
     // Build 12 element scale for 12 ticks
     // And make total height of axis 1/12 less than total height of datum heights
@@ -301,18 +337,29 @@ function buildAxes(xScale, yScale, legendScaleObj) {
     
     // remove axis line itself, leaving only labels
     yAxisGroup.select('path').remove();
-
-    let legendAxis = d3.axisBottom(legendScaleObj.legendScale)
-        .tickValues(legendScaleObj.colorLengths)
     
-    p(legendScaleObj)
+    let lengthsFinalIndex = legendScaleObj.colorLengths.length - 1;
+    let tickValuesArr = legendScaleObj.colorLengths.slice(0, lengthsFinalIndex);
+    
+    tickValuesArr = tickValuesArr.concat(legendScaleObj.colorLengths[lengthsFinalIndex]);
+
+
+    
+    let legendAxis = d3.axisBottom(legendScaleObj.legendScale)
+        .tickValues(tickValuesArr)
+    
         
-        svgWrapper.append('g')
-            .attr('id', 'legend-axis')
-            .attr('style', `transform: translate(${LEGEND_X}px,
-                 ${LEGEND_Y + LEGEND_RECT_HEIGHT}px);`)
-            .call(legendAxis)
+    svgWrapper.append('g')
+        .attr('id', 'legend-axis')
+        .attr('style', `transform: translate(${LEGEND_X}px,
+                ${LEGEND_Y + LEGEND_RECT_HEIGHT}px);`)
+        .call(legendAxis)
         
+
+
+
+    return axesObj;
+
 }
 
 function buildTooltipScaffold() {
