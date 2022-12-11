@@ -17,7 +17,7 @@ const PLOT_HEIGHT = HEIGHT - BOTTOM_PADDING;
 
 const LEGEND_X = PADDING;
 const LEGEND_Y = PLOT_HEIGHT + PADDING / 2;
-const LEGEND_LENGTH = 250;
+const LEGEND_LENGTH = 1000;
 const LEGEND_RECT_HEIGHT = 10;
 
 
@@ -158,14 +158,14 @@ fetch(
             function rebuildLegend(hasColorScaleChanged) {
                 let legend = svgWrapper.select('#legend')
                 let newColorLengths = getColorLengths(colorScalesArr);
-                p(newColorLengths)
+                legendScaleObj.colorLengths = newColorLengths;
+                p({newColorLengths})
                 if (hasColorScaleChanged === true) {
                    
                     legend
                         .selectAll('rect')
                         .data(newColorLengths)
                             .attr('x', d => {
-                                p(d)
                                 if (!d.length) {
                                     return legendScaleObj.legendScale(d);
                                 } else {
@@ -176,6 +176,8 @@ fetch(
                                 return generateLegendFill(d, colorScalesArr, state.colorScaleIndex);
                             })
 
+                    svgWrapper.select('#legend-axis').remove();
+                    buildLegendAxis(legendScaleObj);
                 } else {
                     legend
                         .selectAll('rect')
@@ -375,7 +377,17 @@ function buildAxes(xScale, yScale, legendScaleObj) {
     
     // remove axis line itself, leaving only labels
     yAxisGroup.select('path').remove();
+
+    axesObj.yAxis = yAxis;
     
+    axesObj.legendAxis = buildLegendAxis(legendScaleObj);
+
+
+    return axesObj;
+
+}
+
+function buildLegendAxis(legendScaleObj) {
     let lengthsFinalIndex = legendScaleObj.colorLengths.length - 1;
     let tickValuesArr = legendScaleObj.colorLengths.slice(0, lengthsFinalIndex);
     
@@ -392,12 +404,8 @@ function buildAxes(xScale, yScale, legendScaleObj) {
         .attr('style', `transform: translate(${LEGEND_X}px,
                 ${LEGEND_Y + LEGEND_RECT_HEIGHT}px);`)
         .call(legendAxis)
-        
 
-
-
-    return axesObj;
-
+        return legendAxis;
 }
 
 function buildTooltipScaffold() {
