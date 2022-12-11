@@ -3,7 +3,8 @@
 // TODO: Clean up top axis first and last ticks, etc.
 // TODO: Hide outline when mouse out
 // TODO: Don't round tickValues so much!!!
-// Change legend color lengths when scale type changes?
+// TODO: Fix quantize legend colors
+// TODO: Change legend color lengths when scale type changes?
 
 // Define global variables
 const WIDTH = 1366;
@@ -128,6 +129,8 @@ fetch(
                     .attr('fill', d => {
                         return colorScalesArr[state.colorScaleIndex](d.temp).formatHex();
                     })
+
+                rebuildLegend(true);
             });
         
             cyclePaletteButton.on('mouseup', e => {
@@ -147,15 +150,42 @@ fetch(
                     return colorScalesArr[state.colorScaleIndex](d.temp).formatHex();
                 })
 
-                let legend = svgWrapper.select('#legend')
-                    .selectAll('rect')
-                    .data(legendScaleObj.colorLengths)
-                        .attr('fill', d => {
-                            return colorScalesArr[state.colorScaleIndex](d).formatHex()
-                        })
-
+                
+                rebuildLegend();
 
             })
+
+            function rebuildLegend(hasColorScaleChanged) {
+                let legend = svgWrapper.select('#legend')
+                let newColorLengths = getColorLengths(colorScalesArr);
+                p(newColorLengths)
+                if (hasColorScaleChanged === true) {
+                   
+                    legend
+                        .selectAll('rect')
+                        .data(newColorLengths)
+                            .attr('x', d => {
+                                p(d)
+                                if (!d.length) {
+                                    return legendScaleObj.legendScale(d);
+                                } else {
+                                    return legendScaleObj.legendScale(d[0]);
+                                }
+                            })
+                            .attr('fill', d => {
+                                return generateLegendFill(d, colorScalesArr, state.colorScaleIndex);
+                            })
+
+                } else {
+                    legend
+                        .selectAll('rect')
+                        .data(legendScaleObj.colorLengths)
+                            .attr('fill', d => {
+                                return generateLegendFill(d, colorScalesArr, state.colorScaleIndex);
+                            })
+                }
+        
+            }
         }
     })
 
@@ -236,21 +266,7 @@ function buildScales(data) {
     ];
 
 
-    let colorScaleRange = colorScalesArr[state.colorScaleIndex].range();
-    let colorLengths = colorScaleRange.map((color, index) => {
-        if (index < colorScaleRange.length - 1) {
-            return colorScalesArr[state.colorScaleIndex].invertExtent(color)[0];
-
-            // colorLengths will contain start of color, which is end of previous color
-            // but last element is nested arr of start and end of respective color
-            // as there is no next color that indicates end of that last element
-        } else if (index === colorScaleRange.length - 1) {
-            return [
-                colorScalesArr[state.colorScaleIndex].invertExtent(color)[0],
-                colorScalesArr[state.colorScaleIndex].invertExtent(color)[1]
-            ]
-        }
-    });
+    let colorLengths = getColorLengths(colorScalesArr);
 
 
 
@@ -260,7 +276,6 @@ function buildScales(data) {
 
     let legend = svgWrapper.append('g')
         .attr('id', 'legend')
-    p(colorLengths)
     legend
         .selectAll('rect')
         .data(colorLengths)
@@ -289,7 +304,27 @@ function buildScales(data) {
     
 }
 
-generateLegendFill(d, colorScalesArr, colorScaleIndex) {
+function getColorLengths(colorScalesArr) {
+    let colorScaleRange = colorScalesArr[state.colorScaleIndex].range();
+    let colorLengths = colorScaleRange.map((color, index) => {
+        if (index < colorScaleRange.length - 1) {
+            return colorScalesArr[state.colorScaleIndex].invertExtent(color)[0];
+
+            // colorLengths will contain start of color, which is end of previous color
+            // but last element is nested arr of start and end of respective color
+            // as there is no next color that indicates end of that last element
+        } else if (index === colorScaleRange.length - 1) {
+            return [
+                colorScalesArr[state.colorScaleIndex].invertExtent(color)[0],
+                colorScalesArr[state.colorScaleIndex].invertExtent(color)[1]
+            ]
+        }
+    });
+
+    return colorLengths;
+}
+
+function generateLegendFill(d, colorScalesArr, colorScaleIndex) {
     if (!d.length) {
         return colorScalesArr[colorScaleIndex](d).formatHex()
     } else {
@@ -312,7 +347,6 @@ function buildAxes(xScale, yScale, legendScaleObj) {
         .call(xAxis)
 
         axesObj.xAxis = xAxis;
-        console.log(axesObj)
 
     // Build 12 element scale for 12 ticks
     // And make total height of axis 1/12 less than total height of datum heights
