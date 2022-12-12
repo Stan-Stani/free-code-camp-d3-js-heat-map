@@ -2,9 +2,7 @@
 // TODO: Correctly align highlighting rect to hovered datum
 // TODO: Clean up top axis first and last ticks, etc.
 // TODO: Hide outline when mouse out
-// TODO: Don't round tickValues so much!!!
-// TODO: Fix quantize legend colors
-// TODO: Change legend color lengths when scale type changes?
+
 
 // Define global variables
 const WIDTH = 1366;
