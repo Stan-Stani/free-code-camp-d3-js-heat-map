@@ -2,7 +2,7 @@
 // TODO: Correctly align highlighting rect to hovered datum
 // TODO: Clean up top axis first and last ticks, etc.
 // TODO: Hide outline when mouse out
-
+// TODO: Shrink when height of window shrinks
 
 // Define global variables
 const WIDTH = 1366;
