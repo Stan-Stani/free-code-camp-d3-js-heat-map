@@ -10,14 +10,15 @@
 const WIDTH = 1366;
 const HEIGHT = 768;
 const PADDING = 25;
-const BOTTOM_PADDING = 50;
+const BOTTOM_PADDING = 75;
 
 const PLOT_WIDTH = WIDTH - PADDING;
 const PLOT_HEIGHT = HEIGHT - BOTTOM_PADDING;
 
 const LEGEND_X = PADDING;
 const LEGEND_Y = PLOT_HEIGHT + PADDING / 2;
-const LEGEND_LENGTH = 250;
+var legendLength = 300;
+const INITIAL_LEGEND_LENGTH = legendLength;
 const LEGEND_RECT_HEIGHT = 10;
 
 
@@ -158,24 +159,33 @@ fetch(
             function rebuildLegend(hasColorScaleChanged) {
                 let legend = svgWrapper.select('#legend')
                 let newColorLengths = getColorLengths(colorScalesArr);
-                p(newColorLengths)
+                legendScaleObj.colorLengths = newColorLengths;
                 if (hasColorScaleChanged === true) {
                    
+                    // if scale is quantile, adjust legend length
+                    if (state.colorScaleIndex === 1) {
+                        
+                        legendScaleObj.legendScale.range([0, legendLength = INITIAL_LEGEND_LENGTH * 4]);
+                    } else {
+                        legendScaleObj.legendScale.range([0, legendLength = INITIAL_LEGEND_LENGTH]);
+                    }
+                    
+                    svgWrapper.select('#legend-axis').remove();
+                    buildLegendAxis(legendScaleObj);
+
                     legend
                         .selectAll('rect')
                         .data(newColorLengths)
                             .attr('x', d => {
-                                p(d)
-                                if (!d.length) {
-                                    return legendScaleObj.legendScale(d);
-                                } else {
-                                    return legendScaleObj.legendScale(d[0]);
-                                }
+                                return legendScaleObj.legendScale(d[0]);
                             })
                             .attr('fill', d => {
                                 return generateLegendFill(d, colorScalesArr, state.colorScaleIndex);
                             })
+                            .attr('width',  d => getWidth(d, newColorLengths))
 
+                    
+                    
                 } else {
                     legend
                         .selectAll('rect')
@@ -267,12 +277,12 @@ function buildScales(data) {
 
 
     let colorLengths = getColorLengths(colorScalesArr);
-
+    
 
 
     let legendScale = d3.scaleLinear()
         .domain(colorScalesArr[state.colorScaleIndex].domain())
-        .range([0, LEGEND_LENGTH])
+        .range([0, legendLength])
 
     let legend = svgWrapper.append('g')
         .attr('id', 'legend')
@@ -281,19 +291,12 @@ function buildScales(data) {
         .data(colorLengths)
         .enter()
         .append('rect')
-            .attr('x', d => {
-                if (!d.length) {
-                    return legendScale(d);
-                } else {
-                    return legendScale(d[0]);
-                }
-            })
+            .attr('x', d => legendScale(d[0]))
             .attr('style', `transform: translate(${LEGEND_X}px, ${LEGEND_Y}px);`)
-            .attr('width', Math.abs(0 - LEGEND_LENGTH)/colorLengths.length)
+            .attr('width',  d => getWidth(d, colorLengths))
             .attr('height', LEGEND_RECT_HEIGHT)
-            .attr('fill', (d) => {
-                return generateLegendFill(d, colorScalesArr, state.colorScaleIndex);
-            })
+            .attr('fill', (d) => generateLegendFill(d, colorScalesArr, state.colorScaleIndex))
+
 
 
         
@@ -307,29 +310,24 @@ function buildScales(data) {
 function getColorLengths(colorScalesArr) {
     let colorScaleRange = colorScalesArr[state.colorScaleIndex].range();
     let colorLengths = colorScaleRange.map((color, index) => {
-        if (index < colorScaleRange.length - 1) {
-            return colorScalesArr[state.colorScaleIndex].invertExtent(color)[0];
-
-            // colorLengths will contain start of color, which is end of previous color
-            // but last element is nested arr of start and end of respective color
-            // as there is no next color that indicates end of that last element
-        } else if (index === colorScaleRange.length - 1) {
-            return [
-                colorScalesArr[state.colorScaleIndex].invertExtent(color)[0],
-                colorScalesArr[state.colorScaleIndex].invertExtent(color)[1]
-            ]
-        }
+        return colorScalesArr[state.colorScaleIndex].invertExtent(color);
     });
 
     return colorLengths;
 }
 
+function getWidth(d, colorLengths) {
+    let degreesPerColor = d[1] - d[0];
+    // Removing space between 0 and color start by subtracting colorLengths[0][0]
+    let highestDegreePerColor = colorLengths[colorLengths.length - 1][1] - colorLengths[0][0];
+    let percentage = degreesPerColor / highestDegreePerColor;
+    let colorsWidthInScale = legendLength * percentage;
+
+    return(colorsWidthInScale);
+}
+
 function generateLegendFill(d, colorScalesArr, colorScaleIndex) {
-    if (!d.length) {
-        return colorScalesArr[colorScaleIndex](d).formatHex()
-    } else {
-        return colorScalesArr[colorScaleIndex](d[0]).formatHex()
-    }
+    return colorScalesArr[colorScaleIndex](d[0]).formatHex()
 }
 
 function buildAxes(xScale, yScale, legendScaleObj) {
@@ -375,16 +373,28 @@ function buildAxes(xScale, yScale, legendScaleObj) {
     
     // remove axis line itself, leaving only labels
     yAxisGroup.select('path').remove();
-    
-    let lengthsFinalIndex = legendScaleObj.colorLengths.length - 1;
-    let tickValuesArr = legendScaleObj.colorLengths.slice(0, lengthsFinalIndex);
-    
-    tickValuesArr = tickValuesArr.concat(legendScaleObj.colorLengths[lengthsFinalIndex]);
 
+    axesObj.yAxis = yAxis;
+    
+    axesObj.legendAxis = buildLegendAxis(legendScaleObj);
+
+
+    return axesObj;
+
+}
+
+function buildLegendAxis(legendScaleObj) {
+    let colorLengths = legendScaleObj.colorLengths;
+
+    let tickValuesArr = colorLengths.map((element) => element[0]);
+    // Only 11 colors but need 12 ticks so using final part of final color for last tick
+    tickValuesArr.push(colorLengths[colorLengths.length - 1][1])
 
     
     let legendAxis = d3.axisBottom(legendScaleObj.legendScale)
         .tickValues(tickValuesArr)
+        .tickArguments([tickValuesArr.length, ".1f"])
+        
     
         
     svgWrapper.append('g')
@@ -392,12 +402,32 @@ function buildAxes(xScale, yScale, legendScaleObj) {
         .attr('style', `transform: translate(${LEGEND_X}px,
                 ${LEGEND_Y + LEGEND_RECT_HEIGHT}px);`)
         .call(legendAxis)
+
+
+    // If scale is quantile, adjust tick lengths
+    if (state.colorScaleIndex === 1) {
+                        
         
+        let oddElements = svgWrapper
+            .select('#legend-axis')
+            .selectAll('.tick:nth-child(odd)');
 
+        oddElements
+            .selectAll('line')
+                .attr('y2', function(d) {
+                    let currentTickLength = parseFloat(this.getAttribute('y2'));
+                    return 20;
+                });
 
+        oddElements
+            .selectAll('text')
+                .attr('y', function(d) {
+                    let currentY = parseFloat(this.getAttribute('y'));
+                    return 2.5 * currentY;
+                })
+    }
 
-    return axesObj;
-
+        return legendAxis;
 }
 
 function buildTooltipScaffold() {
