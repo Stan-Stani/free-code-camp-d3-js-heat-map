@@ -2,7 +2,7 @@
 // TODO: Correctly align highlighting rect to hovered datum
 // TODO: Clean up top axis first and last ticks, etc.
 // TODO: Hide outline when mouse out
-
+// TODO: Shrink when height of window shrinks
 
 // Define global variables
 const WIDTH = 1366;
@@ -93,14 +93,16 @@ fetch(
 
                 tooltip
                     .attr('style', `transform: translate(0px,
-                         ${parseInt(yScale(d.month)) + 
-                            parseInt(tooltip.select('#tooltip-rect').attr('height'))}px);`
-                         )
+                        ${parseInt(yScale(d.month)) + 
+                        parseInt(tooltip.select('rect').attr('height'))}px);`
+                    )
+                    .select('rect')
+                            .attr('fill', 'blue')
         
             })
 
 
-        tooltip = buildTooltipScaffold();
+        tooltip = buildTooltip();
 
        
 
@@ -428,29 +430,6 @@ function buildLegendAxis(legendScaleObj) {
         return legendAxis;
 }
 
-function buildTooltipScaffold() {
-    let tooltip = svgWrapper
-        .append('g')
-        .attr('id', 'tooltip')
-    
-    let tooltipRect = tooltip
-        .append('rect')
-        .attr('id', 'tooltip-rect')
-        .attr('rx', '.75%')
-        .attr('ry', '.75%')
-        .attr('width', '400')
-        .attr('height', '100')
-    
-    tooltip
-        .append('text')
-        .text('hello')
-        .attr('x', '0')
-        .attr('y', '32')
-        
-
-    return tooltip;
-}
-
 function buildButtons() {
     let cycleScaleTypeButton = 
     svgWrapper
@@ -520,7 +499,36 @@ function buildDatumOutline() {
 }
 
 
+function buildTooltip() {
+    let tooltip =
+            svgWrapper.append('g')
+                .attr('id', 'tooltip')
+        
+    let tooltipRect = tooltip
+        .append('rect')
+            .attr('width', 300)
+            .attr('height', 60)
+            .attr('rx', '.75%')
+            .attr('ry', '.75%');
+    
+    
+    let timeText = tooltip
+        .append('text')
+            .attr('id', 'tooltip-time')
+             // dy: 1em; effectively shifts origin of text from bottom left to top left
+            .attr('dy', '1em')
 
+
+    let absoluteTempText = tooltip
+        .append('text')
+            .attr('id', 'tooltip-absolute-temp')
+
+    let varianceTempText = tooltip
+        .append('text')
+            .attr('id', 'tooltip-variance-temp')
+
+    return tooltip;
+}
 
 
 

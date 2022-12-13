@@ -39,7 +39,7 @@ body {
 
 
 #tooltip rect {
-    fill: black;
+    opacity: 90%;
     color: white;
 }
 
