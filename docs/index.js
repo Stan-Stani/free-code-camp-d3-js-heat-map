@@ -530,6 +530,45 @@ function buildTooltip() {
     return tooltip;
 }
 
+class Tooltip {
+    tooltip =
+            svgWrapper.append('g')
+                .attr('id', 'tooltip')
+
+    constructor(config) {
+        this.containerWidth = config.containerWidth;
+        this.containerHeight = config.containerHeight;
+        this.tooltipHeight = config.tooltipHeight;
+    }
+
+    
+        
+    tooltipRect = tooltip
+        .append('rect')
+            .attr('width', 300)
+            .attr('height', 60)
+            .attr('rx', '.75%')
+            .attr('ry', '.75%');
+    
+    
+    timeText = tooltip
+        .append('text')
+            .attr('id', 'tooltip-time')
+             // dy: 1em; effectively shifts origin of text from bottom left to top left
+            .attr('dy', '1em')
+
+
+    absoluteTempText = tooltip
+        .append('text')
+            .attr('id', 'tooltip-absolute-temp')
+
+    varianceTempText = tooltip
+        .append('text')
+            .attr('id', 'tooltip-variance-temp')
+
+    
+}
+
 
 
 // utility functions
