@@ -102,7 +102,13 @@ fetch(
             })
 
 
-        tooltip = buildTooltip();
+        let config = {
+            containerWidth: WIDTH,
+            containerHeight: HEIGHT
+        };
+        let tooltip = new Tooltip(config);
+        tooltip.setTextElement('test', 'LOLaaaaaaaaaaaaaaaaaaaaaaaaa')
+        tooltip = tooltip.getTooltip();
 
        
 
@@ -531,41 +537,68 @@ function buildTooltip() {
 }
 
 class Tooltip {
-    tooltip =
-            svgWrapper.append('g')
-                .attr('id', 'tooltip')
+    tooltip = svgWrapper.append('g')
+        .attr('id', 'tooltip')
+
+    tooltipRect = this.tooltip.append('rect')
+        .attr('width', 60)
+        .attr('height', 60)
+        .attr('rx', '.75%')
+        .attr('ry', '.75%');
+    
+    textElementQuantity = 0;
+    textObj = {};
+
+    // IDs:
+    //     'tooltip-time'
+    // 'tooltip-absolute-temp'
+    // 'tooltip-variance-temp'
 
     constructor(config) {
         this.containerWidth = config.containerWidth;
         this.containerHeight = config.containerHeight;
-        this.tooltipHeight = config.tooltipHeight;
     }
 
-    
-        
-    tooltipRect = tooltip
-        .append('rect')
-            .attr('width', 300)
-            .attr('height', 60)
-            .attr('rx', '.75%')
-            .attr('ry', '.75%');
-    
-    
-    timeText = tooltip
-        .append('text')
-            .attr('id', 'tooltip-time')
-             // dy: 1em; effectively shifts origin of text from bottom left to top left
+    addTextElement(id) {
+       
+        let y = (this.textElementQuantity === 0) ? 0 : (2 * this.textElementQuantity) + 'em';
+
+        let textElement = this.tooltip.append('text')
+            .attr('id', id)
+            // dy: 1em; effectively shifts origin of text from bottom left to top left
             .attr('dy', '1em')
+            .attr('y', y)
+
+        this.textObj[id] = {};
+        this.textObj[id].text = null;
+        this.textObj[id].length = null;
+
+        this.textElementQuantity++;
+        return textElement;
+    }
+
+    setTextElement(id, textValue) {
+        if (this.textObj['id'] === undefined) {
+            this.addTextElement(id);
+        }
 
 
-    absoluteTempText = tooltip
-        .append('text')
-            .attr('id', 'tooltip-absolute-temp')
+        this.textObj[id].text = textValue;
+        let textElement = this.tooltip.select('#' + id)
+            .text(textValue);
 
-    varianceTempText = tooltip
-        .append('text')
-            .attr('id', 'tooltip-variance-temp')
+        let rectWidth = parseFloat(this.tooltipRect.attr('width'));
+        let textElementWidth = textElement.node().getComputedTextLength();
+        p({rectWidth, textElementWidth})
+        if (textElementWidth > rectWidth) {
+                this.tooltipRect.attr('width', textElementWidth)
+        }
+        this.textObj[id].length = textElementWidth;
+    }
 
+    getTooltip() {
+        return this.tooltip;
+    }
     
 }
 
