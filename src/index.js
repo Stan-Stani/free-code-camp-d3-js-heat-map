@@ -551,15 +551,20 @@ class Tooltip {
     }
 
     addTextElement(id) {
+<<<<<<< HEAD
         let paddingVerticalEms = this.paddingVertical / this.#pixelsPerEm();
         let yOffset = (this.textElementQuantity === 0) ? 0 : (2 * this.textElementQuantity);;
 
 
+=======
+        let y = (this.textElementQuantity === 0) ? 0 + 'em' : (2 * this.textElementQuantity) + 'em';
+>>>>>>> 97fe650a417b4336a34f6967febc9ecea7ce7d22
 
         let textElement = this.tooltip.append('text')
             .attr('id', id)
             // dy: 1em; effectively shifts origin of text from bottom left to top left
             .attr('dy', '1em')
+<<<<<<< HEAD
             .attr('y', paddingVerticalEms + yOffset +'em')
         
         
@@ -567,6 +572,15 @@ class Tooltip {
        
         this.tooltipRect
             .attr('height', (yOffset + 1 + 2 * paddingVerticalEms) + 'em');
+=======
+            .attr('y', y)
+        
+        
+        // height of rect is set to include all textElements + a tiny padding
+        let rectBottomPadding = .3
+        this.tooltipRect
+            .attr('height', (parseFloat(y.slice(0, -2)) + 1 + rectBottomPadding) + 'em');
+>>>>>>> 97fe650a417b4336a34f6967febc9ecea7ce7d22
 
         
 
@@ -597,7 +611,20 @@ class Tooltip {
         let rectWidth = parseFloat(this.tooltipRect.attr('width'));
         let textElementWidth = textElement.node().getComputedTextLength();
 
+<<<<<<< HEAD
         
+=======
+        // let lengthSortedArr = [];
+        // for (text in this.textObj) {
+        //     if (text.length) 
+        // }
+
+        if (textElementWidth > rectWidth) {
+                this.tooltipRect.attr('width', textElementWidth)
+        } else if (textElementWidth < this.greatestTextElementWidth) {
+            
+        }
+>>>>>>> 97fe650a417b4336a34f6967febc9ecea7ce7d22
         this.textObj[id].length = textElementWidth;
 
         let lengthArr = [];
@@ -660,6 +687,45 @@ class Tooltip {
             .attr('style', `transform: translate(${leftSideX}px, ${topSideY}px)`)
             
         
+    }
+
+    setPos(x, y, isHorizontallyCenteredOnPoint = false) {
+        // Handle horizontally centering 
+        let leftSideX;
+        let topSideY;
+        if (isHorizontallyCenteredOnPoint === false) {
+            leftSideX = x;
+            topSideY = y;
+        } else if (isHorizontallyCenteredOnPoint === true) {
+            leftSideX = x - parseFloat(this.tooltipRect.attr('width') / 2);
+            topSideY = y;
+        }
+
+
+        // Reposition if overflow would happen
+        let rightSideX = leftSideX + parseFloat(this.tooltipRect.attr('width'));
+        
+        let pixelsPerEm = parseFloat(getComputedStyle(this.tooltipRect.node().parentNode).fontSize);
+        let rectHeightInPixels = parseFloat(this.tooltipRect.attr('height')) * pixelsPerEm;
+        let bottomSideY = topSideY + rectHeightInPixels;
+
+        if (leftSideX < 0) {
+            leftSideX = 0;
+        } else if (rightSideX > this.containerWidth) {
+            leftSideX = this.containerWidth - this.tooltipRect.attr('width');
+        }
+        let containerHeight = this.containerHeight;
+   
+        if (topSideY < 0) {
+            topSideY = 0;
+        } else if (bottomSideY > this.containerHeight) {
+            topSideY = this.containerHeight - rectHeightInPixels;
+        }
+
+
+        
+        this.tooltip
+            .attr('style', `transform: translate(${leftSideX}px, ${topSideY}px)`) 
     }
 
     getTooltip() {
