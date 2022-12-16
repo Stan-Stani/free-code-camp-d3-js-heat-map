@@ -537,6 +537,7 @@ function buildDatumOutline() {
     let outlineRect = svgWrapper.append('rect');
 
     outlineRect
+        .attr('id', 'datum-outline')
         .attr('width', datumRect.attr('width') - 1)
         .attr('height', datumRect.attr('height') - 1)
         .attr('stroke', 'black')
