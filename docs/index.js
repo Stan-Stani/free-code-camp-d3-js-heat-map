@@ -1,4 +1,5 @@
-
+// TODO: Adjust final tick so it is in middle of last datum column, not at end
+// TODO: Remove datum highlight when not hovering over a datum
 
 // Define global variables
 const WIDTH = 1366;
@@ -82,7 +83,11 @@ fetch(
                 // Not an arrow function because vanilla anon will
                 // get 'this' initialized to dom element event is happening on
             })
-            .attr('class', 'datum-rect')
+            // data attributes are for fCC tests
+            .attr('data-month', d => d.month - 1)
+            .attr('data-year', d => d.year)
+            .attr('data-temp', d => d.temp)
+            .attr('class', 'datum-rect cell')
             .on('mouseover', function(e, d) {
                 clearTimeout(tooltip.timeoutId);
                 datumOutline.attr('x', this.getAttribute('x'))
@@ -93,6 +98,8 @@ fetch(
                 tooltip.setTextElement('tooltip-time', `${monthArr[d.month - 1]} ${d.year}`);
                 tooltip.setTextElement('tooltip-absolute-temp', `${d.temp.toFixed(1)}°C`);
                 tooltip.setTextElement('tooltip-variance-temp', `${d.variance.toFixed(1)}°C`);
+                // data attribute for fCC test
+                tooltip.getTooltip().attr('data-year', d.year);
 
                 let xPos = xScale(new Date(parseInt((d.year)), 0));
                 let yPos = parseInt(yScale(d.month)) + DATUM_HEIGHT + PADDING;
@@ -217,7 +224,7 @@ fetch(
 
 function buildScales(data) {
     const xScale = d3.scaleTime();
-    xScale.range([PADDING, WIDTH - PADDING])
+    xScale.range([2.3 * PADDING, WIDTH - PADDING])
 
 
 
@@ -249,6 +256,23 @@ function buildScales(data) {
 
     let palettesArr = [
         {
+            name: "ColorBrewer's 11 Class RdBu Diverging",
+            colors: [
+                '#67001f',
+                '#b2182b',
+                '#d6604d',
+                '#f4a582',
+                '#fddbc7',
+                '#f7f7f7',
+                '#d1e5f0',
+                '#92c5de',
+                '#4393c3',
+                '#2166ac',
+                '#053061'
+            ].map(element => d3.color(element)).reverse()
+
+        },
+        {
             name: "Stan's Palette",
             colors: [
                 d3.color('#004352'),
@@ -264,7 +288,8 @@ function buildScales(data) {
                 d3.color('#7a292c')
             ]
         },
-        {   name: "freeCodeCamp's Palette",
+        {   
+            name: "freeCodeCamp's Palette",
             colors: [
                 '#a50026',
                 '#d73027',
@@ -371,8 +396,8 @@ function buildAxes(xScale, yScale, legendScaleObj) {
         .tickSizeInner(3)
         .tickFormat(d => {
             let monthArr = [
-                'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
             ]
             return monthArr[d - 1];
         })
@@ -384,7 +409,7 @@ function buildAxes(xScale, yScale, legendScaleObj) {
     let yAxisGroup = svgWrapper.append('g')
         .attr('id', 'y-axis')
         // Set y such that ticks are aligned with middle of each datum
-        .attr('style', `transform: translate(${PADDING * .8}px, ${DATUM_HEIGHT / 2}px);`)
+        .attr('style', `transform: translate(${2.1 * PADDING}px, ${DATUM_HEIGHT / 2}px);`)
         .call(yAxis)
     
     // remove axis line itself, leaving only labels
