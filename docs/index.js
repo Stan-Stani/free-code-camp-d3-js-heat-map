@@ -88,16 +88,12 @@ fetch(
                 datumOutline.attr('stroke', 'black');
 
 
-                tooltip.select('text')
-                .text(JSON.stringify(d))
+                tooltip.setTextElement('tooltip-time', JSON.stringify(d))
 
-                tooltip
-                    .attr('style', `transform: translate(0px,
-                        ${parseInt(yScale(d.month)) + 
-                        parseInt(tooltip.select('rect').attr('height'))}px);`
-                    )
-                    .select('rect')
-                            .attr('fill', 'blue')
+                let xPos = xScale(new Date(parseInt((d.year)), 0));
+                let yPos = parseInt(yScale(d.month)) + DATUM_HEIGHT + PADDING;
+                tooltip.setPos(xPos, yPos, true)
+                    
         
             })
 
@@ -106,9 +102,11 @@ fetch(
             containerWidth: WIDTH,
             containerHeight: HEIGHT
         };
+
         let tooltip = new Tooltip(config);
-        tooltip.setTextElement('test', 'LOLaaaaaaaaaaaaaaaaaaaaaaaaa')
-        tooltip = tooltip.getTooltip();
+        tooltip.setTextElement('tooltip-time', 'a')
+        tooltip.setTextElement('tooltip-absolute-temp', 'b')
+        tooltip.setTextElement('tooltip-variance-temp', 'c')
 
        
 
@@ -505,54 +503,22 @@ function buildDatumOutline() {
 }
 
 
-function buildTooltip() {
-    let tooltip =
-            svgWrapper.append('g')
-                .attr('id', 'tooltip')
-        
-    let tooltipRect = tooltip
-        .append('rect')
-            .attr('width', 300)
-            .attr('height', 60)
-            .attr('rx', '.75%')
-            .attr('ry', '.75%');
-    
-    
-    let timeText = tooltip
-        .append('text')
-            .attr('id', 'tooltip-time')
-             // dy: 1em; effectively shifts origin of text from bottom left to top left
-            .attr('dy', '1em')
-
-
-    let absoluteTempText = tooltip
-        .append('text')
-            .attr('id', 'tooltip-absolute-temp')
-
-    let varianceTempText = tooltip
-        .append('text')
-            .attr('id', 'tooltip-variance-temp')
-
-    return tooltip;
-}
-
 class Tooltip {
     tooltip = svgWrapper.append('g')
         .attr('id', 'tooltip')
 
     tooltipRect = this.tooltip.append('rect')
-        .attr('width', 60)
-        .attr('height', 60)
         .attr('rx', '.75%')
-        .attr('ry', '.75%');
+        .attr('ry', '.75%')
+        // Setting these attributes to 0 so that NaN doesn't have to be parsed
+        // later 
+        .attr('width', 0)
+        .attr('height', 0);
     
     textElementQuantity = 0;
     textObj = {};
 
-    // IDs:
-    //     'tooltip-time'
-    // 'tooltip-absolute-temp'
-    // 'tooltip-variance-temp'
+    
 
     constructor(config) {
         this.containerWidth = config.containerWidth;
@@ -560,14 +526,21 @@ class Tooltip {
     }
 
     addTextElement(id) {
-       
-        let y = (this.textElementQuantity === 0) ? 0 : (2 * this.textElementQuantity) + 'em';
+        let y = (this.textElementQuantity === 0) ? 0 + 'em' : (2 * this.textElementQuantity) + 'em';
 
         let textElement = this.tooltip.append('text')
             .attr('id', id)
             // dy: 1em; effectively shifts origin of text from bottom left to top left
             .attr('dy', '1em')
             .attr('y', y)
+        
+        
+        // height of rect is set to include all textElements + a tiny padding
+        let rectBottomPadding = .3
+        this.tooltipRect
+            .attr('height', (parseFloat(y.slice(0, -2)) + 1 + rectBottomPadding) + 'em');
+
+        
 
         this.textObj[id] = {};
         this.textObj[id].text = null;
@@ -578,7 +551,7 @@ class Tooltip {
     }
 
     setTextElement(id, textValue) {
-        if (this.textObj['id'] === undefined) {
+        if (this.textObj[id] === undefined) {
             this.addTextElement(id);
         }
 
@@ -589,11 +562,57 @@ class Tooltip {
 
         let rectWidth = parseFloat(this.tooltipRect.attr('width'));
         let textElementWidth = textElement.node().getComputedTextLength();
-        p({rectWidth, textElementWidth})
+
+        // let lengthSortedArr = [];
+        // for (text in this.textObj) {
+        //     if (text.length) 
+        // }
+
         if (textElementWidth > rectWidth) {
                 this.tooltipRect.attr('width', textElementWidth)
+        } else if (textElementWidth < this.greatestTextElementWidth) {
+            
         }
         this.textObj[id].length = textElementWidth;
+    }
+
+    setPos(x, y, isHorizontallyCenteredOnPoint = false) {
+        // Handle horizontally centering 
+        let leftSideX;
+        let topSideY;
+        if (isHorizontallyCenteredOnPoint === false) {
+            leftSideX = x;
+            topSideY = y;
+        } else if (isHorizontallyCenteredOnPoint === true) {
+            leftSideX = x - parseFloat(this.tooltipRect.attr('width') / 2);
+            topSideY = y;
+        }
+
+
+        // Reposition if overflow would happen
+        let rightSideX = leftSideX + parseFloat(this.tooltipRect.attr('width'));
+        
+        let pixelsPerEm = parseFloat(getComputedStyle(this.tooltipRect.node().parentNode).fontSize);
+        let rectHeightInPixels = parseFloat(this.tooltipRect.attr('height')) * pixelsPerEm;
+        let bottomSideY = topSideY + rectHeightInPixels;
+
+        if (leftSideX < 0) {
+            leftSideX = 0;
+        } else if (rightSideX > this.containerWidth) {
+            leftSideX = this.containerWidth - this.tooltipRect.attr('width');
+        }
+        let containerHeight = this.containerHeight;
+   
+        if (topSideY < 0) {
+            topSideY = 0;
+        } else if (bottomSideY > this.containerHeight) {
+            topSideY = this.containerHeight - rectHeightInPixels;
+        }
+
+
+        
+        this.tooltip
+            .attr('style', `transform: translate(${leftSideX}px, ${topSideY}px)`) 
     }
 
     getTooltip() {
