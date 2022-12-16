@@ -3,6 +3,7 @@ html {
     margin: 0;
     width: 100%;
     background-color: grey;
+    font-family: sans-serif;
 }
 
 body {
@@ -35,8 +36,12 @@ body {
     display: block;
     max-height: 768px;
     min-height: 0;
+    height: 100%;
 }
 
+#tooltip {
+    pointer-events: none;
+}
 
 #tooltip rect {
     opacity: 90%;
@@ -48,15 +53,20 @@ body {
 }
 
 .svg-rect-button {
-    fill: green;
+    font-size: 17px;
+    stroke: black;
+    stroke-width: 3;
+    font-weight: bold;
+    fill: #15982d;
     user-select: none;
 }
 
 .svg-rect-button text {
+    stroke: none;
     fill: white;
 }
 
 .svg-rect-button:hover {
-    fill: black;
+    fill: #1cb939;
 }
 

@@ -1,8 +1,4 @@
-// TODO: Revert datum highlighting to black stroke
-// TODO: Correctly align highlighting rect to hovered datum
-// TODO: Clean up top axis first and last ticks, etc.
-// TODO: Hide outline when mouse out
-// TODO: Shrink when height of window shrinks
+
 
 // Define global variables
 const WIDTH = 1366;
@@ -50,7 +46,8 @@ fetch(
                 return {
                     year: e.year,
                     month: e.month,
-                    temp: parseFloat(e.variance) + baseTemperature
+                    temp: parseFloat(e.variance) + baseTemperature,
+                    variance: e.variance
                 }
             });
 
@@ -65,6 +62,11 @@ fetch(
 
         let dataGroup = svgWrapper.append('g')
             .attr('class', 'data-group')
+
+        const monthArr = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ]
 
         dataGroup
             .selectAll('rect')
@@ -82,13 +84,15 @@ fetch(
             })
             .attr('class', 'datum-rect')
             .on('mouseover', function(e, d) {
+                clearTimeout(tooltip.timeoutId);
                 datumOutline.attr('x', this.getAttribute('x'))
                 datumOutline.attr('y', this.getAttribute('y'))
                 datumOutline.attr('style', 'visibility: visible;')
-                datumOutline.attr('stroke', 'black');
 
-
-                tooltip.setTextElement('tooltip-time', JSON.stringify(d))
+                
+                tooltip.setTextElement('tooltip-time', `${monthArr[d.month - 1]} ${d.year}`);
+                tooltip.setTextElement('tooltip-absolute-temp', `${d.temp.toFixed(1)}°C`);
+                tooltip.setTextElement('tooltip-variance-temp', `${d.variance.toFixed(1)}°C`);
 
                 let xPos = xScale(new Date(parseInt((d.year)), 0));
                 let yPos = parseInt(yScale(d.month)) + DATUM_HEIGHT + PADDING;
@@ -96,21 +100,26 @@ fetch(
                     
         
             })
+            .on('mouseout', function(e, d) {
+                tooltip.timeoutId = setTimeout(tooltip.disappear.bind(tooltip), tooltip.timeoutDurationInMs);
+            });
 
 
         let config = {
             containerWidth: WIDTH,
-            containerHeight: HEIGHT
+            containerHeight: HEIGHT,
+            paddingVertical: 12,
+            paddingHorizontal: 20,
         };
 
+        let buttons = buildButtons();
+
         let tooltip = new Tooltip(config);
-        tooltip.setTextElement('tooltip-time', 'a')
-        tooltip.setTextElement('tooltip-absolute-temp', 'b')
-        tooltip.setTextElement('tooltip-variance-temp', 'c')
+        tooltip.setTextElement('tooltip-time', '')
+        tooltip.setTextElement('tooltip-absolute-temp', '')
+        tooltip.setTextElement('tooltip-variance-temp', '')
 
-       
-
-       handleButtonClicks(...buildButtons());
+        handleButtonLogic(...buttons)
 
         
         let datumOutline = buildDatumOutline()
@@ -120,8 +129,11 @@ fetch(
 
 
 
-        function handleButtonClicks(cycleScaleTypeButton, cyclePaletteButton) {
-            cycleScaleTypeButton.on('mouseup', (e) => {
+        function handleButtonLogic(cycleScaleButton, cyclePaletteButton) {
+            cycleScaleButton.on('mouseover', (e) => tooltip.disappear());
+            cyclePaletteButton.on('mouseover', (e) => tooltip.disappear());
+            
+            cycleScaleButton.on('mouseup', (e) => {
         
                 state.colorScaleIndex++;
                 (state.colorScaleIndex > colorScalesArr.length - 1) ? state.colorScaleIndex = 0 : null;
@@ -435,27 +447,32 @@ function buildLegendAxis(legendScaleObj) {
 }
 
 function buildButtons() {
-    let cycleScaleTypeButton = 
+    let widthScaleButton = 90;
+    let widthPaletteButton = 64
+    let heightButton = 30;
+
+    let cycleScaleButton = 
     svgWrapper
         .append('g')
             .attr('id', 'cycle-scale-type-button')
             .attr('class', 'svg-rect-button')
         
-    cycleScaleTypeButton
-        .attr('style', `transform: translate(${WIDTH - PADDING - 30}px, 30px`)
+    cycleScaleButton
+        .attr('style', `transform: translate(${PADDING}px, ${HEIGHT - heightButton}px`)
     
-    cycleScaleTypeButton
+    cycleScaleButton
         .append('rect')
             .attr('rx', '.75%')
             .attr('ry', '.75%')
-            .attr('width', '60')
-            .attr('height', '30')
+            .attr('width', widthScaleButton)
+            .attr('height', heightButton)
 
-    cycleScaleTypeButton
+    cycleScaleButton
         .append('text')
             .text('scale type')
-            .attr('x', '0')
-            .attr('y', '15')
+            .attr('x', '4')
+            .attr('y', heightButton / 2)
+            .attr('dy', '.25em')
 
     
     let cyclePaletteButton =
@@ -464,22 +481,26 @@ function buildButtons() {
             .attr('class', 'svg-rect-button')
             
     cyclePaletteButton
-        .attr('style', `transform: translate(${WIDTH - PADDING - 90}px, 30px`)
+        .attr(
+            'style',
+            `transform: translate(${1.5 * PADDING + widthScaleButton}px, ${HEIGHT - heightButton}px`
+        )
 
     cyclePaletteButton
         .append('rect')
             .attr('rx', '.75%')
             .attr('ry', '.75%')
-            .attr('width', '60')
-            .attr('height', '30')
+            .attr('width', widthPaletteButton)
+            .attr('height', heightButton)
 
     cyclePaletteButton
         .append('text')
             .text('palette')
-            .attr('x', '0')
-            .attr('y', '15')
+            .attr('x', '4')
+            .attr('y', heightButton / 2)
+            .attr('dy', '.25em')
 
-    return [cycleScaleTypeButton, cyclePaletteButton];
+    return [cycleScaleButton, cyclePaletteButton];
 }
 
 
@@ -517,36 +538,48 @@ class Tooltip {
     
     textElementQuantity = 0;
     textObj = {};
+    tooltipTimeoutId = null;
 
     
 
     constructor(config) {
         this.containerWidth = config.containerWidth;
         this.containerHeight = config.containerHeight;
+        this.paddingHorizontal = config.paddingHorizontal ? config.paddingHorizontal : 0;
+        this.paddingVertical = config.paddingVertical ? config.paddingVertical : 0;
+        this.timeoutDurationInMs = config.timeoutDurationInMs ? config.timeoutDurationInMs : 1000;
     }
 
     addTextElement(id) {
-        let y = (this.textElementQuantity === 0) ? 0 + 'em' : (2 * this.textElementQuantity) + 'em';
+        let paddingVerticalEms = this.paddingVertical / this.#pixelsPerEm();
+        let yOffset = (this.textElementQuantity === 0) ? 0 : (2 * this.textElementQuantity);;
+
+
 
         let textElement = this.tooltip.append('text')
             .attr('id', id)
             // dy: 1em; effectively shifts origin of text from bottom left to top left
             .attr('dy', '1em')
-            .attr('y', y)
+            .attr('y', paddingVerticalEms + yOffset +'em')
         
         
-        // height of rect is set to include all textElements + a tiny padding
-        let rectBottomPadding = .3
+        // height of rect is set to include all textElements + a vert padding
+       
         this.tooltipRect
-            .attr('height', (parseFloat(y.slice(0, -2)) + 1 + rectBottomPadding) + 'em');
+            .attr('height', (yOffset + 1 + 2 * paddingVerticalEms) + 'em');
 
         
 
         this.textObj[id] = {};
         this.textObj[id].text = null;
         this.textObj[id].length = null;
+       
 
         this.textElementQuantity++;
+        this.textObj[id].index = this.textElementQuantity - 1;
+
+
+
         return textElement;
     }
 
@@ -560,20 +593,33 @@ class Tooltip {
         let textElement = this.tooltip.select('#' + id)
             .text(textValue);
 
+        // Dynamically resize tooltip rect based on text length
         let rectWidth = parseFloat(this.tooltipRect.attr('width'));
         let textElementWidth = textElement.node().getComputedTextLength();
 
-        // let lengthSortedArr = [];
-        // for (text in this.textObj) {
-        //     if (text.length) 
-        // }
-
-        if (textElementWidth > rectWidth) {
-                this.tooltipRect.attr('width', textElementWidth)
-        } else if (textElementWidth < this.greatestTextElementWidth) {
-            
-        }
+        
         this.textObj[id].length = textElementWidth;
+
+        let lengthArr = [];
+        for (const textId in this.textObj) {
+            let length = this.textObj[textId].length
+            lengthArr.push(length);
+        }
+        let maxLength = d3.max(lengthArr);
+
+        if (maxLength > rectWidth || maxLength < rectWidth) {
+            this.tooltipRect.attr('width', maxLength + 2 * this.paddingHorizontal);
+            rectWidth = maxLength + 2 * this.paddingHorizontal;
+        }
+
+        // Horizontally center all textElements
+        for (const textId in this.textObj) {
+            let length = this.textObj[textId].length
+            let textStartX = (rectWidth - length) / 2;
+            this.tooltip.select('#' + textId).attr('x', textStartX)
+        }
+       
+        
     }
 
     setPos(x, y, isHorizontallyCenteredOnPoint = false) {
@@ -592,8 +638,7 @@ class Tooltip {
         // Reposition if overflow would happen
         let rightSideX = leftSideX + parseFloat(this.tooltipRect.attr('width'));
         
-        let pixelsPerEm = parseFloat(getComputedStyle(this.tooltipRect.node().parentNode).fontSize);
-        let rectHeightInPixels = parseFloat(this.tooltipRect.attr('height')) * pixelsPerEm;
+        let rectHeightInPixels = parseFloat(this.tooltipRect.attr('height')) * this.#pixelsPerEm();
         let bottomSideY = topSideY + rectHeightInPixels;
 
         if (leftSideX < 0) {
@@ -612,11 +657,22 @@ class Tooltip {
 
         
         this.tooltip
-            .attr('style', `transform: translate(${leftSideX}px, ${topSideY}px)`) 
+            .attr('style', `transform: translate(${leftSideX}px, ${topSideY}px)`)
+            
+        
     }
 
     getTooltip() {
         return this.tooltip;
+    }
+
+    disappear() {
+        this.tooltip
+            .attr('style', 'visibility: hidden');
+    }
+
+    #pixelsPerEm() {
+        return parseFloat(getComputedStyle(this.tooltipRect.node().parentNode).fontSize);
     }
     
 }
@@ -624,6 +680,6 @@ class Tooltip {
 
 
 // utility functions
-function p(...input) {
+function q(...input) {
     console.log(...input);
 }
