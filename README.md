@@ -5,7 +5,7 @@ This heat-map allows the user to
 * toggle between 3 color palettes
 * toggle between a quantize scale and a quantile scale
 
-In addition to the map's cell's changing color based on the button presses,
+In addition to the map's cells changing color based on the button presses,
  the legend dynamically changes.
 
 ## Tooltip
