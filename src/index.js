@@ -688,13 +688,6 @@ class Tooltip {
         
     }
 
-    setPos(x, y, isHorizontallyCenteredOnPoint = false) {
-
-        
-        this.tooltip
-            .attr('style', `transform: translate(${leftSideX}px, ${topSideY}px)`) 
-    }
-
     getTooltip() {
         return this.tooltip;
     }

@@ -688,45 +688,6 @@ class Tooltip {
         
     }
 
-    setPos(x, y, isHorizontallyCenteredOnPoint = false) {
-        // Handle horizontally centering 
-        let leftSideX;
-        let topSideY;
-        if (isHorizontallyCenteredOnPoint === false) {
-            leftSideX = x;
-            topSideY = y;
-        } else if (isHorizontallyCenteredOnPoint === true) {
-            leftSideX = x - parseFloat(this.tooltipRect.attr('width') / 2);
-            topSideY = y;
-        }
-
-
-        // Reposition if overflow would happen
-        let rightSideX = leftSideX + parseFloat(this.tooltipRect.attr('width'));
-        
-        let pixelsPerEm = parseFloat(getComputedStyle(this.tooltipRect.node().parentNode).fontSize);
-        let rectHeightInPixels = parseFloat(this.tooltipRect.attr('height')) * pixelsPerEm;
-        let bottomSideY = topSideY + rectHeightInPixels;
-
-        if (leftSideX < 0) {
-            leftSideX = 0;
-        } else if (rightSideX > this.containerWidth) {
-            leftSideX = this.containerWidth - this.tooltipRect.attr('width');
-        }
-        let containerHeight = this.containerHeight;
-   
-        if (topSideY < 0) {
-            topSideY = 0;
-        } else if (bottomSideY > this.containerHeight) {
-            topSideY = this.containerHeight - rectHeightInPixels;
-        }
-
-
-        
-        this.tooltip
-            .attr('style', `transform: translate(${leftSideX}px, ${topSideY}px)`) 
-    }
-
     getTooltip() {
         return this.tooltip;
     }

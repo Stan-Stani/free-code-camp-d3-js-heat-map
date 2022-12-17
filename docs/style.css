@@ -48,10 +48,6 @@ body {
    
 }
 
-#datum-outline {
-    pointer-events: none;
-}
-
 #tooltip {
     pointer-events: none;
 }
