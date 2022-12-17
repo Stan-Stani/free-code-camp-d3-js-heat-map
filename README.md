@@ -43,6 +43,6 @@ if the entered id does not correspond to an existing text element.
 
 ``.setPos(x, y, isHorizontallyCenteredOnPoint=false)`` allows for the tooltip
 to be centered horizontally on, or have its origin placed at, the given x and y points, unless
-so placing the tooltip would place it outside the given viewport that was entered
-in the config when the class object was initialized. This method will keep the
-tooltip in the viewport.
+so placing the tooltip would place it outside the given ``containerWidth`` and
+``containerHeight`` that were entered in the config when the class object was 
+initialized. This method will keep the tooltip entirely inside those given dimensions.
