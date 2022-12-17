@@ -27,7 +27,7 @@ let tooltip = new Tooltip({
     paddingHorizontal: 20,
     paddingVertical: 15,
 
-    // Time it will take for tooltip to disappear on cell mouse-out
+    // time it will take for tooltip to disappear on cell mouse-out
     timeoutDurationInMs: 2000
 });
 ```
