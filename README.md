@@ -37,7 +37,7 @@ let tooltip = new Tooltip({
 ``.addTextElement(id)`` allows easy adding of text lines and adds vertical space to the 
 tooltip accordingly.
 
-``.setTextElement(id)`` sets text of course, and resizes the produced tooltip to fit the text
+``.setTextElement(id, textValue)`` sets text of course, and resizes the produced tooltip to fit the text
 based on all set text. This method will also add a text element via ``addTextElement(id)``
 if the entered id does not correspond to an existing text element.
 
